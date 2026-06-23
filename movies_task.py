@@ -91,7 +91,45 @@ df.head()
 
 # COMMAND ----------
 
-# write your code here
+#1. Create seperate Director and STars columns 
+stars_source = df["STARS"].fillna("").astype(str)
+
+# Extract director/directors name
+df["Director"] = stars_source.str.extract(
+    r"Directors?:\s*(.*?)(?:\s*\|\s*Stars?:|$)",
+    expand=False
+).fillna("").str.strip()
+
+# Extract stars names
+df["Stars"] = stars_source.str.extract(
+    r"Stars?:\s*(.*)$",
+    expand=False
+).fillna("").str.strip()
+
+# Clean extra spaces inside Director and Stars columns
+for column in ["Director", "Stars"]:
+    df[column] = (
+        df[column]
+        .str.replace(r"\s+", " ", regex=True)
+        .str.replace(r"\s*,\s*", ", ", regex=True)
+        .str.strip()
+    )
+
+# Drop original STARS column
+df = df.drop(columns=["STARS"])
+
+
+# 2. Split Extract_date into extraction_date and extraction_time
+df["Extract_date"] = pd.to_datetime(df["Extract_date"], errors="coerce")
+
+df["extraction_date"] = df["Extract_date"].dt.date
+df["extraction_time"] = df["Extract_date"].dt.time
+
+# Drop original Extract_date column
+df = df.drop(columns=["Extract_date"])
+
+# Show result
+df.head()
 
 # COMMAND ----------
 

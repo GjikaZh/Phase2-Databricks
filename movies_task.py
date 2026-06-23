@@ -48,7 +48,33 @@ df.head()
 import pandas as pd
 # Data cleaning requirements
 
-# write your code here
+# 1. Remove empty rows
+# A row is empty if all these columns are null
+empty_row_columns = [
+    "MOVIES",
+    "YEAR",
+    "GENRE",
+    "RATING",
+    "ONE-LINE",
+    "STARS",
+    "VOTES",
+    "RunTime",
+    "Gross"
+]
+
+df = df.dropna(subset=empty_row_columns, how="all").reset_index(drop=True)
+
+# 2. Remove '\n' from GENRE, ONE-LINE, and STARS
+columns_with_new_lines = ["GENRE", "ONE-LINE", "STARS"]
+
+for column in columns_with_new_lines:
+    df[column] = df[column].str.replace("\n", " ", regex=False).str.strip()
+
+# 3. Remove '\t' from owner_company
+df["owner_company"] = df["owner_company"].str.replace("\t", "", regex=False).str.strip()
+
+# Show result
+df.head()
 
 # COMMAND ----------
 

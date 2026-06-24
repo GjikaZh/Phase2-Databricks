@@ -130,7 +130,7 @@ df["extraction_time"] = df["Extract_date"].dt.time
 # IMPORTANT:
 # The instructions say to drop Extract_date, but the assertion is failing.
 # So we keep Extract_date for the final assertion.
-# df = df.drop(columns=["Extract_date"])
+df = df.drop(columns=["Extract_date"])
 
 # Show result
 df.head()
@@ -251,7 +251,7 @@ def assert_df(df):
     # Checks for the first csv file
     # the end dataset should be of shape (9999,16)
     assert df.shape[0] == 9999
-    assert df.shape[1] == 17
+    assert df.shape[1] == 16
 
     # The Lasted column should have 3180 rows with 'present' value
     assert df.loc[df["end_year"]=='present'].shape[0] == 3180

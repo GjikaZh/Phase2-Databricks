@@ -144,7 +144,44 @@ df.head()
 
 # COMMAND ----------
 
-# Write your code here
+# Requirement: Year logic
+
+# Convert YEAR column to clean text
+year_text = df["YEAR"].fillna("").astype(str).str.strip()
+
+# Extract start year and end year from values like:
+# (2021), (2010–2022), (2021– ), (I) (2018– )
+year_parts = year_text.str.extract(r"(?P<start_year>\d{4})(?:\s*[–-]\s*(?P<end_year>\d{4})?)?")
+
+# Create start_year column
+df["start_year"] = year_parts["start_year"].fillna("")
+
+# Create end_year column
+df["end_year"] = ""
+
+# Case 1: completed shows/movies with range, for example (2010–2022)
+completed_range = year_parts["start_year"].notna() & year_parts["end_year"].notna()
+df.loc[completed_range, "end_year"] = year_parts.loc[completed_range, "end_year"]
+
+# Case 2: still in production, for example (2021– )
+still_in_production = year_text.str.contains(r"[–-]\s*\)", regex=True)
+df.loc[still_in_production, "end_year"] = "present"
+
+# Create lasted column
+# Only completed ranges get a number.
+# Single-year movies and present shows get empty string.
+df["lasted"] = ""
+
+df.loc[completed_range, "lasted"] = (
+    year_parts.loc[completed_range, "end_year"].astype(int)
+    - year_parts.loc[completed_range, "start_year"].astype(int)
+)
+
+# Drop original YEAR column
+df = df.drop(columns=["YEAR"])
+
+# Show result
+df.head()
 
 # COMMAND ----------
 

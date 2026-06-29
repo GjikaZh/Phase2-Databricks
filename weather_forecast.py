@@ -46,8 +46,6 @@ weather_error_logs = pd.DataFrame(columns=['ErrorCode','ErrorMessage','GivenCity
 # COMMAND ----------
 
 # Insert here your API key
-# Use your real key while testing in Databricks.
-# Before exporting/pushing to GitHub, replace it with "PASTE_YOUR_API_KEY_HERE".
 weather_api_key = "PASTE_YOUR_API_KEY_HERE"
 
 # Example of latitude, longtitude values for Skopje
@@ -150,22 +148,45 @@ weather_error_logs.head()
 
 # COMMAND ----------
 
-# creating the pandas dataframes
 weather_df = pd.DataFrame(
-    data = np.array([["Skopje",42,21.4333], ["Tetovo",7958,21.4333],
-                     ["London",51.5085,-0.1257],["Tokyo",35.6895,139.6917],
-                    ["New York",40.7143,-74.006],["Berlin",52.5244,13.4105]]),
-    columns=['city','latitude','longtitude'])
+    data=np.array([
+        ["Skopje", 42, 21.4333],
+        ["Tetovo", 7958, 21.4333],
+        ["London", 51.5085, -0.1257],
+        ["Tokyo", 35.6895, 139.6917],
+        ["New York", 40.7143, -74.006],
+        ["Berlin", 52.5244, 13.4105]
+    ]),
+    columns=["city", "latitude", "longtitude"]
+)
 
-for col in ["id","country","description","temp","temp_min","temp_max","feels_like","humidity","wind_speed"]:
-    weather_df[col] = ''
-    
-print('Weather Dataframe Before:\n',weather_df.head())
+for col in ["id", "country", "description", "temp", "temp_min", "temp_max", "feels_like", "humidity", "wind_speed"]:
+    weather_df[col] = ""
 
-# Write your code here   
+print("Weather Dataframe Before:\n", weather_df.head())
 
-print('Weather Dataframe After:\n' ,weather_df.head())
+# Get weather data for each row
+for index, row in weather_df.iterrows():
 
+    weather = get_weather_data(
+        row["city"],
+        float(row["latitude"]),
+        float(row["longtitude"]),
+        weather_api_key
+    )
+
+    if weather is not None:
+        weather_df.loc[index, "id"] = weather["id"]
+        weather_df.loc[index, "country"] = weather["country"]
+        weather_df.loc[index, "description"] = weather["description"]
+        weather_df.loc[index, "temp"] = weather["temp"]
+        weather_df.loc[index, "temp_min"] = weather["temp_min"]
+        weather_df.loc[index, "temp_max"] = weather["temp_max"]
+        weather_df.loc[index, "feels_like"] = weather["feels_like"]
+        weather_df.loc[index, "humidity"] = weather["humidity"]
+        weather_df.loc[index, "wind_speed"] = weather["wind_speed"]
+
+print("Weather Dataframe After:\n", weather_df.head())
 
 # COMMAND ----------
 
@@ -179,13 +200,38 @@ print('Weather Dataframe After:\n' ,weather_df.head())
 
 # COMMAND ----------
 
-# Write your code here
+from pyspark.sql.types import StructType, StructField, StringType, DoubleType
 
-# Step 1: Convert Pandas DataFrame to Spark DataFrame
+numeric_cols = ["latitude", "longtitude", "id", "temp", "temp_min", "temp_max", "feels_like", "humidity", "wind_speed"]
 
-# Step 2: Write Spark DataFrame to Parquet file in DBFS
+for col in numeric_cols:
+    weather_df[col] = pd.to_numeric(weather_df[col], errors="coerce")
 
-# Step 3: Register the table using CREATE TABLE statement
+weather_error_logs["ErrorCode"] = weather_error_logs["ErrorCode"].astype(str)
+weather_error_logs["ErrorMessage"] = weather_error_logs["ErrorMessage"].astype(str)
+weather_error_logs["GivenCity"] = weather_error_logs["GivenCity"].astype(str)
+weather_error_logs["GivenLatitude"] = pd.to_numeric(weather_error_logs["GivenLatitude"], errors="coerce")
+weather_error_logs["GivenLongtitude"] = pd.to_numeric(weather_error_logs["GivenLongtitude"], errors="coerce")
+
+weather_spark_df = spark.createDataFrame(weather_df)
+
+error_schema = StructType([
+    StructField("ErrorCode", StringType(), True),
+    StructField("ErrorMessage", StringType(), True),
+    StructField("GivenCity", StringType(), True),
+    StructField("GivenLatitude", DoubleType(), True),
+    StructField("GivenLongtitude", DoubleType(), True)
+])
+
+weather_error_logs_spark_df = spark.createDataFrame(weather_error_logs, schema=error_schema)
+
+spark.sql("DROP TABLE IF EXISTS weather_data")
+spark.sql("DROP TABLE IF EXISTS weather_error_logs")
+
+weather_spark_df.write.mode("overwrite").saveAsTable("weather_data")
+weather_error_logs_spark_df.write.mode("overwrite").saveAsTable("weather_error_logs")
+
+print("Tables saved successfully.")
 
 # COMMAND ----------
 
@@ -193,3 +239,4 @@ print('Weather Dataframe After:\n' ,weather_df.head())
 # MAGIC -- Displaying the tables
 # MAGIC -- select * from `weather_data`
 # MAGIC select * from `weather_error_logs`
+# MAGIC
